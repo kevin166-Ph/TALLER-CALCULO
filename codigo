@@ -1,1 +1,312 @@
 
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+
+# =====================================================
+# 1. CONFIGURACIÓN DEL EXPERIMENTO
+# =====================================================
+
+# Distancia focal de la lente (cm)
+f = 10.0
+
+# Incertidumbres de medición (cm)
+sigma_f = 0.1
+sigma_do = 0.1
+
+# Intervalo de distancias del objeto (cm)
+do = np.linspace(10.5, 100, 200)
+
+# Punto utilizado para la linealización
+do0 = 30.0
+
+# Crear carpeta para guardar resultados
+os.makedirs("resultados_tema21", exist_ok=True)
+
+
+# =====================================================
+# 2. ECUACIÓN DE GAUSS
+# =====================================================
+
+# 1/f = 1/do + 1/di
+# Despejando: di = (f * do) / (do - f)
+
+di = (f * do) / (do - f)
+
+
+# =====================================================
+# 3. DIFERENCIACIÓN IMPLÍCITA
+# =====================================================
+
+# Derivada de la distancia de imagen respecto
+# a la distancia del objeto:
+# ddi/ddo = -(di/do)^2
+
+derivada = -(di / do) ** 2
+
+
+# =====================================================
+# 4. MAGNIFICACIÓN LONGITUDINAL
+# =====================================================
+
+# La magnificación longitudinal es igual a la derivada
+
+ML = derivada
+
+# Magnificación transversal para comparación
+MT = -di / do
+
+
+# =====================================================
+# 5. PROPAGACIÓN DE INCERTIDUMBRES
+# =====================================================
+
+# Incertidumbre de la distancia de imagen.
+# Se consideran independientes los errores de f y do.
+
+derivada_di_do = -(f ** 2) / (do - f) ** 2
+derivada_di_f = (do ** 2) / (do - f) ** 2
+
+sigma_di = np.sqrt(
+    (derivada_di_do * sigma_do) ** 2
+    + (derivada_di_f * sigma_f) ** 2
+)
+
+# Incertidumbre de la magnificación longitudinal
+
+derivada_M_do = (2 * f ** 2) / (do - f) ** 3
+derivada_M_f = -(2 * f * do) / (do - f) ** 3
+
+sigma_ML = np.sqrt(
+    (derivada_M_do * sigma_do) ** 2
+    + (derivada_M_f * sigma_f) ** 2
+)
+
+
+# =====================================================
+# 6. LINEALIZACIÓN
+# =====================================================
+
+# Encontrar el valor de imagen cuando do = 30 cm
+
+di0 = (f * do0) / (do0 - f)
+
+# Derivada en el punto de operación
+
+pendiente = -(di0 / do0) ** 2
+
+# Aproximación lineal:
+# di ≈ di0 + pendiente * (do - do0)
+
+di_lineal = di0 + pendiente * (do - do0)
+
+# Seleccionar una región cercana al punto de operación
+
+zona = (do >= 20) & (do <= 45)
+
+
+# =====================================================
+# 7. COMPARACIÓN DE DERIVADA ANALÍTICA Y NUMÉRICA
+# =====================================================
+
+# Derivada numérica mediante diferencias finitas
+
+derivada_numerica = np.gradient(di, do)
+
+
+# =====================================================
+# 8. GENERAR GRÁFICA DE DISTANCIA DE IMAGEN
+# =====================================================
+
+plt.figure(figsize=(9, 6))
+
+plt.errorbar(
+    do, di,
+    xerr=sigma_do,
+    yerr=sigma_di,
+    fmt=".",
+    markersize=3,
+    capsize=2,
+    label="Resultados con incertidumbre"
+)
+
+plt.xlabel("Distancia del objeto (cm)")
+plt.ylabel("Distancia de la imagen (cm)")
+plt.title("Distancia de imagen frente a distancia del objeto")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+plt.savefig(
+    "resultados_tema21/01_distancia_imagen.png",
+    dpi=300
+)
+
+plt.show()
+
+
+# =====================================================
+# 9. GRÁFICA DE MAGNIFICACIÓN LONGITUDINAL
+# =====================================================
+
+plt.figure(figsize=(9, 6))
+
+plt.errorbar(
+    do, ML,
+    xerr=sigma_do,
+    yerr=sigma_ML,
+    fmt=".",
+    markersize=3,
+    capsize=2,
+    label="Magnificación longitudinal"
+)
+
+plt.xlabel("Distancia del objeto (cm)")
+plt.ylabel("Magnificación longitudinal")
+plt.title("Magnificación longitudinal frente a distancia del objeto")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+plt.savefig(
+    "resultados_tema21/02_magnificacion_longitudinal.png",
+    dpi=300
+)
+
+plt.show()
+
+
+# =====================================================
+# 10. GRÁFICA DE LINEALIZACIÓN
+# =====================================================
+
+plt.figure(figsize=(9, 6))
+
+plt.plot(
+    do,
+    di,
+    label="Modelo original"
+)
+
+plt.plot(
+    do[zona],
+    di_lineal[zona],
+    "--",
+    label="Aproximación lineal"
+)
+
+plt.scatter(
+    do0,
+    di0,
+    label="Punto de operación (30, 15)"
+)
+
+plt.xlabel("Distancia del objeto (cm)")
+plt.ylabel("Distancia de la imagen (cm)")
+plt.title("Linealización de la ecuación de Gauss")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+plt.savefig(
+    "resultados_tema21/03_linealizacion.png",
+    dpi=300
+)
+
+plt.show()
+
+
+# =====================================================
+# 11. COMPARACIÓN DE DERIVADAS
+# =====================================================
+
+plt.figure(figsize=(9, 6))
+
+plt.plot(
+    do,
+    derivada,
+    label="Derivada analítica"
+)
+
+plt.plot(
+    do,
+    derivada_numerica,
+    "--",
+    label="Derivada numérica"
+)
+
+plt.xlabel("Distancia del objeto (cm)")
+plt.ylabel("Razón de cambio ddi/ddo")
+plt.title("Comparación de derivadas")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+plt.savefig(
+    "resultados_tema21/04_comparacion_derivadas.png",
+    dpi=300
+)
+
+plt.show()
+
+
+# =====================================================
+# 12. CREAR TABLA DE RESULTADOS
+# =====================================================
+
+tabla = pd.DataFrame({
+    "Distancia objeto (cm)": do,
+    "Distancia imagen (cm)": di,
+    "Incertidumbre imagen (cm)": sigma_di,
+    "Magnificacion longitudinal": ML,
+    "Incertidumbre magnificacion": sigma_ML,
+    "Magnificacion transversal": MT,
+    "Derivada analitica": derivada,
+    "Derivada numerica": derivada_numerica
+})
+
+tabla.to_csv(
+    "resultados_tema21/tabla_resultados.csv",
+    index=False
+)
+
+
+# =====================================================
+# 13. EJEMPLO NUMÉRICO EN do = 30 cm
+# =====================================================
+
+print("\n========================================")
+print("       RESULTADOS DEL TEMA 21")
+print("========================================")
+
+print(f"Distancia focal: {f:.2f} cm")
+print(f"Distancia del objeto: {do0:.2f} cm")
+print(f"Distancia de la imagen: {di0:.2f} cm")
+
+print(f"Magnificacion longitudinal: {pendiente:.4f}")
+
+# Incertidumbre en la distancia de imagen
+sigma_di0 = np.sqrt(
+    (-(f ** 2) / (do0 - f) ** 2 * sigma_do) ** 2
+    + ((do0 ** 2) / (do0 - f) ** 2 * sigma_f) ** 2
+)
+
+# Incertidumbre de la magnificación
+sigma_ML0 = np.sqrt(
+    ((2 * f ** 2) / (do0 - f) ** 3 * sigma_do) ** 2
+    + (-(2 * f * do0) / (do0 - f) ** 3 * sigma_f) ** 2
+)
+
+print(f"Incertidumbre de imagen: ±{sigma_di0:.4f} cm")
+print(f"Incertidumbre de magnificación: ±{sigma_ML0:.4f}")
+
+print("\nEcuaciones utilizadas:")
+print("Ecuación de Gauss: 1/f = 1/do + 1/di")
+print("Distancia imagen: di = (f*do)/(do-f)")
+print("Derivada: ddi/ddo = -(di/do)^2")
+print("Magnificación longitudinal: ML = -(di/do)^2")
+
+print("\nArchivos guardados en la carpeta resultados_tema21")
+print("========================================")
